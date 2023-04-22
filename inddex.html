@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Task Management System</title>
+  <style>
+    body {
+      display: flex;
+      background-color: #1f2227;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+    .column {
+      width: 33.33%;
+      box-sizing: border-box;
+      border: 1px solid #2d333b;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px;
+      height: 100vh;
+      overflow: auto;
+    }
+    .column-header {
+      font-size: 24px;
+      margin-bottom: 10px;
+      margin-top: 30px;
+      text-align: center;
+      position: absolute;
+      top: 0
+    }
+    .task {
+      border: 1px solid #2d333b;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+      margin-top: 5;
+      cursor: pointer;
+      position: relative;
+      top: 50px;
+      background-color: #2d333b;
+    }
+    .task:hover, .selected {
+      background-color: #444c56;
+    }
+    #completed-column .task {
+      text-decoration: line-through;
+      color: #6c757d;
+    }
+    form {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input[type="text"] {
+      padding: 5px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      background-color: #2d333b;
+      color: white;
+      margin-right: 10px;
+    }
+    button[type="submit"] {
+      padding: 5px 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      background-color: #4f5b66;
+      color: white;
+      cursor: pointer;
+    }
+    button[type="submit"]:hover {
+      background-color: #5a6773;
+    }
+  </style>
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+  const addTaskForm = document.getElementById("add-task-form");
+  const notStartedColumn = document.getElementById("not-started-column");
+  const inProgressColumn = document.getElementById("in-progress-column");
+  const completedColumn = document.getElementById("completed-column");
+  let selectedTaskElement = null;
+
+  addTaskForm.addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const taskName = document.getElementById("task-name").value;
+    const taskElement = document.createElement("div");
+
+    taskElement.innerText = taskName;
+    taskElement.classList.add("task");
+
+    taskElement.addEventListener("click", function(event) {
+      if (selectedTaskElement) {
+        selectedTaskElement.classList.remove("selected");
+      }
+      selectedTaskElement = taskElement;
+      selectedTaskElement.classList.add("selected");
+    });
+
+    notStartedColumn.appendChild(taskElement);
+  });
+
+  document.addEventListener("keydown", function(event) {
+    if (!selectedTaskElement) {
+      return;
+    }
+
+    if (event.key === "ArrowRight" && selectedTaskElement.parentNode === notStartedColumn) {
+      inProgressColumn.insertBefore(selectedTaskElement, inProgressColumn.firstChild);
+    } else if (event.key === "ArrowRight" && selectedTaskElement.parentNode === inProgressColumn) {
+      completedColumn.insertBefore(selectedTaskElement, completedColumn.firstChild);
+    } else if (event.key === "ArrowLeft" && selectedTaskElement.parentNode === inProgressColumn) {
+      notStartedColumn.insertBefore(selectedTaskElement, notStartedColumn.firstChild);
+    } else if (event.key === "ArrowLeft" && selectedTaskElement.parentNode === completedColumn) {
+      inProgressColumn.insertBefore(selectedTaskElement, inProgressColumn.firstChild);
+    }
+    
+    // Log the task status to a JSON file
+    const taskStatus = {
+      "not started": [],
+      "in progress": [],
+      "completed": []
+    };
+
+    const columns = [notStartedColumn, inProgressColumn, completedColumn];
+    for (let i = 0; i < columns.length; i++) {
+      const column = columns[i];
+      const tasks = column.querySelectorAll(".task");
+      for (let j = 0; j < tasks.length; j++) {
+        const task = tasks[j];
+        const taskName = task.innerText.trim();
+        const status = column.id.replace("-column", "");
+        taskStatus[status].push(taskName);
+      }
+    }
+
+    fetch("/log-task-status.js", {
+      method: "POST",
+      body: JSON.stringify(taskStatus),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  });
+});
+
+</script>
+
+</head>
+<body>
+  <div class="column" id="not-started-column">
+    <div class="column-header">Not Started</div>
+  </div>
+  <div class="column" id="in-progress-column">
+    <div class="column-header">In Progress</div>
+  </div>
+  <div class="column" id="completed-column">
+    <div class="column-header">Completed</div>
+  </div>
+  <form id="add-task-form">
+    <label for="task-name">Task Name:</label>
+    <input type="text" id="task-name">
+    <button type="submit">Add Task</button>
+  </form>
+</body>
+</html>
